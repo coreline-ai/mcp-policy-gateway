@@ -2,11 +2,13 @@
 
 ## 1. High-Level Architecture
 
+### 1.1 Runtime Gateway Architecture
+
 ```text
 MCP Client
   Claude / Codex / ChatGPT
     |
-    | MCP stdio or Streamable HTTP
+    | MCP stdio (current) or managed inbound transport (later)
     v
 MCP Runtime Policy Gateway
     |
@@ -30,6 +32,33 @@ Gateway는 동시에 두 역할을 수행한다.
 |---|---|
 | Upstream | LLM client 입장에서는 일반 MCP server |
 | Downstream | target MCP server 입장에서는 MCP client |
+
+### 1.2 PlayMCP Hosted Preflight Architecture
+
+PlayMCP/Kakao public registration uses a different path. PlayMCP is the inbound
+MCP client, and this project must expose a public Remote MCP endpoint.
+
+```text
+PlayMCP / Toolbox / External AI client
+    |
+    | Streamable HTTP
+    v
+https://<public-host>/mcp
+    |
+    v
+public-preflight MCP surface
+    |
+    +-- gateway_search_playmcp
+    +-- gateway_preflight_mcp
+    +-- gateway_explain_mcp_risk
+    |
+    v
+PlayMCP inventory snapshot + risk classifier + decision mapper
+```
+
+This mode does not register, spawn, or call target MCPs. It is a static
+pre-use assessment surface. Runtime enforcement starts only in the managed/local
+Gateway path where the target MCP is actually behind the Gateway.
 
 ## 2. Runtime Flow
 
@@ -62,6 +91,26 @@ Gateway는 동시에 두 역할을 수행한다.
 
 이 흐름은 "안전 보장"이 아니라 사용 가능 여부 판단 지원이다. 실제 보호는 target MCP가 client에 직접 등록되지 않고 Gateway 뒤에 있을 때만 성립한다.
 
+PlayMCP hosted preflight uses the same assessment logic, but the user does not
+install this repository locally. The operator deploys a public `/mcp` endpoint,
+registers it in the PlayMCP developer console, and exposes only the public
+preflight tools.
+
+### 2.2.1 Hosted Streamable HTTP Contract
+
+The PlayMCP hosted endpoint follows MCP Streamable HTTP:
+
+- `/mcp` is the single endpoint for POST and GET.
+- POST accepts one JSON-RPC message per request.
+- POST requests include `Accept: application/json, text/event-stream`.
+- JSON-RPC requests return either `application/json` or `text/event-stream`.
+- JSON-RPC notifications/responses accepted by the server return `202 Accepted`.
+- GET either opens an SSE stream or returns `405 Method Not Allowed`.
+- DELETE returns `405 Method Not Allowed` while the server stays stateless.
+- `MCP-Protocol-Version` is validated and unsupported values return `400 Bad Request`.
+- `Mcp-Session-Id` is not issued by default; future stateful mode must validate it.
+- `Origin`, body size, query length, and rate/abuse limits are enforced before dispatch.
+
 ### 2.3 Tool Call
 
 ```text
@@ -82,6 +131,7 @@ Gateway는 동시에 두 역할을 수행한다.
 | Component | Responsibility | MVP |
 |---|---|---:|
 | Upstream MCP Server | exposes Gateway tools to LLM clients | Yes |
+| Hosted Inbound HTTP Server | exposes public-preflight `/mcp` for PlayMCP registration | P1 hosted MVP |
 | Target Registry | stores target config and auth profile ref | Yes |
 | StdioTargetAdapter | launches/attaches target MCP over stdio | Yes |
 | HttpTargetAdapter | connects to Streamable HTTP target behind ADR-017 egress guard | Guarded post-MVP surface |
@@ -95,7 +145,8 @@ Gateway는 동시에 두 역할을 수행한다.
 
 ### 3.1 HTTP Target Adapter / SSRF Guard
 
-HTTP target support is a **post-MVP guarded surface**, not the stdio MVP cut line.
+HTTP target support is a **downstream outbound post-MVP guarded surface**, not
+the public inbound PlayMCP endpoint and not the stdio MVP cut line.
 When present, it must stay behind ADR-017:
 
 - `validateUrlShape` checks scheme allowlist, optional host allowlist, and literal private IPs at registration time.

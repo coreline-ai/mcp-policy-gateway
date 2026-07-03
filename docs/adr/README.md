@@ -22,3 +22,4 @@ system is built the way it is. Supersede by adding a new ADR, not editing an old
 | [ADR-015](ADR-015.md) | Fail Closed For Unsupported Reverse Capabilities |
 | [ADR-016](ADR-016.md) | Use Underscore Tool Name Grammar (No Dots) |
 | [ADR-017](ADR-017.md) | HTTP Target Adapter Behind An SSRF Egress Guard |
+| [ADR-018](ADR-018.md) | Hosted Streamable HTTP Public Preflight Mode |

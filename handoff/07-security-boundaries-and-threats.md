@@ -6,6 +6,10 @@
 
 > MCP Runtime Policy Gateway는 등록된 target MCP의 tool 노출과 호출을 정책으로 통제하고, 정책상 차단 또는 승인 대상으로 분류된 호출을 target에 전달하지 않으며, 모든 결정의 근거와 감사 로그를 남긴다.
 
+PlayMCP hosted preflight mode가 말할 수 있는 것:
+
+> Hosted Preflight MCP는 PlayMCP inventory와 선언된 tool surface를 바탕으로 target MCP 연결 전 정적 판단 지원, risk label, 권장 정책, 운영자 handoff를 제공한다.
+
 ## 2. Forbidden Claims
 
 제품이 말하면 안 되는 것:
@@ -20,6 +24,11 @@
 - 이 MCP는 안전하다고 보증한다.
 - 브라우저를 통해 유료/API 제한 데이터를 무료로 우회 수집한다.
 - paywall, rate limit, anti-bot, 약관 제한을 우회한다.
+- Kakao 또는 PlayMCP가 보안상 공식 보증했다.
+- 모든 PlayMCP MCP를 연결해도 된다.
+- public hosted mode에서 per-user/team enforcement를 제공한다.
+- public hosted mode가 remote MCP의 live behavior를 모두 검증했다.
+- public hosted mode가 target MCP 직접 등록을 보호한다.
 
 ## 3. Security Boundary
 
@@ -36,6 +45,7 @@ Gateway가 통제할 수 있는 것:
 | target credential client 비노출 | secret store/KMS와 scoped auth profile |
 | audit read 최소화 | RBAC, read-side redaction, retention/TTL |
 | target 등록 권한 | privileged config/operator action과 executable/endpoint allowlist |
+| public preflight answer | inventory metadata, risk labels, deterministic decision mapping |
 
 Gateway가 단독으로 통제할 수 없는 것:
 
@@ -50,6 +60,30 @@ Gateway가 단독으로 통제할 수 없는 것:
 | paywall/rate-limit/anti-bot 우회 | 제품 경로에서 금지한다. |
 | stdio 호출자별 신원 확인 | stdio transport는 caller identity를 제공하지 않는다. |
 | 임의 target process의 OS-level 격리 | target 등록 자체가 실행 경계이며 OS sandbox가 필요하다. |
+| public hosted 사용자의 target MCP 실행 경로 | public-preflight mode는 target을 호출하지 않는다. |
+
+## 3.1 Public Hosted Boundary
+
+`public-preflight` mode는 PlayMCP/Kakao public registration 전용 surface다.
+
+Allowed public tools:
+
+- `gateway_search_playmcp`
+- `gateway_preflight_mcp`
+- `gateway_explain_mcp_risk`
+
+Not public:
+
+- `gateway_health` as an MCP tool
+- `gateway_call_tool`
+- `gateway_request_approval`
+- `gateway_list_exposed_tools`
+- target registry, rescan, diff, audit read, operator tools
+- dynamic target aliases
+
+Hosted public mode may process user queries, MCP names, URLs, declared tool names,
+and reason-for-use text. Hosted operation must document retention, deletion,
+abuse handling, and security contact before public listing.
 
 ## 4. Identity And Deployment Assumptions
 

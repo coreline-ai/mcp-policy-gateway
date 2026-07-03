@@ -1,21 +1,34 @@
 # 06. API And Tool Surface
 
-이 문서는 현재 구현 기준의 Gateway MCP tool surface를 설명한다. Source of truth는 `src/upstream/tools.ts`의 `GATEWAY_TOOLS`, `CLIENT_GATEWAY_TOOL_NAMES`, `OPERATOR_GATEWAY_TOOL_NAMES`와 `src/upstream/gateway.ts`의 dispatch 동작이다.
+이 문서는 현재 구현 기준의 Gateway MCP tool surface와 PlayMCP hosted
+registration을 위한 planned public surface를 설명한다. Current source of
+truth는 `src/upstream/tools.ts`의 `GATEWAY_TOOLS`, `CLIENT_GATEWAY_TOOL_NAMES`,
+`OPERATOR_GATEWAY_TOOL_NAMES`와 `src/upstream/gateway.ts`의 dispatch 동작이다.
 
 ## 1. Current Gateway Tool Surface
 
-Gateway는 두 가지 surface mode를 가진다.
+Gateway는 현재 두 가지 구현 surface mode를 가진다. PlayMCP public listing에는
+세 번째 planned mode인 `public-preflight`가 필요하다.
 
 | Mode | 목적 | 노출 도구 |
 |---|---|---|
 | `client` | 일반 MCP client에 기본 노출되는 사용자/런타임 surface | `gateway_health`, `gateway_search_playmcp`, `gateway_preflight_mcp`, `gateway_explain_mcp_risk`, `gateway_call_tool`, `gateway_list_exposed_tools`, `gateway_request_approval` |
 | `operator` | target 등록/관측/감사 확인을 수행하는 trusted operator surface | client surface 전체 + `gateway_list_targets`, `gateway_inspect_target`, `gateway_rescan_target`, `gateway_diff_target`, `gateway_get_audit_event` |
+| `public-preflight` | PlayMCP/Kakao hosted registration용 public decision-support surface | `gateway_search_playmcp`, `gateway_preflight_mcp`, `gateway_explain_mcp_risk` |
 
 `client` mode의 의도는 비전문 사용자가 Claude, Codex CLI, desktop MCP client의 프롬프트 창에서 먼저 Gateway MCP를 등록하고 target MCP 연결 전 사전검증을 받을 수 있게 하는 것이다. `operator` mode는 target registry와 catalog를 직접 다루는 운영자 전용 surface다.
+
+`public-preflight` mode는 아직 구현되지 않은 hosted inbound mode다. 이 mode는
+PlayMCP에서 public Remote MCP로 등록하기 위한 surface이며 target registry,
+target adapter, approval store, audit read, dynamic target aliases를 노출하지 않는다.
 
 ## 2. Pre-Use Assessment Tools
 
 PlayMCP 기반 사전검증은 inventory 기반 정적 판단 지원이다. 실제 remote MCP의 `tools/call`을 자동 호출하지 않으며, "안전 보장"이나 악성 MCP 완전 탐지를 주장하지 않는다.
+
+For hosted public registration, these are the only MCP tools that should appear
+in `tools/list`. Operational health should move to HTTP `/healthz`, not
+`gateway_health`.
 
 ### 2.1 `gateway_search_playmcp`
 
@@ -117,6 +130,19 @@ Output:
   ]
 }
 ```
+
+### 2.4 Public Hosted Exclusion Rules
+
+PlayMCP public listing must hide every runtime/operator tool:
+
+| Tool or group | Public status | Reason |
+|---|---:|---|
+| `gateway_health` | Hidden as MCP tool | Use HTTP `/healthz`; do not expose tenant/runtime metadata to the model. |
+| `gateway_call_tool` | Hidden | It routes real target calls and belongs only to runtime Gateway mode. |
+| `gateway_list_exposed_tools` | Hidden | It reveals policy-filtered runtime alias surface. |
+| `gateway_request_approval` | Hidden | It creates approval state and belongs to managed/local runtime flows. |
+| `gateway_list_targets`, `gateway_inspect_target`, `gateway_rescan_target`, `gateway_diff_target`, `gateway_get_audit_event` | Hidden | Trusted operator-only controls. |
+| Dynamic target aliases | Hidden | Public preflight is not a target proxy. |
 
 ## 3. Runtime And Operator Tools
 

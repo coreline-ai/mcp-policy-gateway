@@ -1,18 +1,63 @@
-# MCP Runtime Policy Gateway
+# MCP Policy Gateway
 
-Inline MCP policy proxy for target MCP servers. It sits between an LLM client and
-target MCP servers, exposes only policy-approved tools, enforces
-allow/block/approval decisions before a `tools/call` reaches the target, and
-records audit/evidence for every decision.
+MCP preflight and runtime policy tooling for people who want to evaluate a
+target MCP before connecting it.
+
+The current product direction has two modes:
+
+1. **PlayMCP Hosted Preflight MCP**: a public Remote MCP surface for PlayMCP/Kakao
+   registration. Users ask whether another MCP should be connected and receive
+   inventory-based risk labels, decision aid, recommended Gateway policy, and
+   operator handoff. This mode must not call target MCPs.
+2. **Runtime Policy Gateway**: a local or managed inline MCP proxy. It sits
+   between an MCP client and target MCP servers, exposes only policy-approved
+   tools, enforces allow/block/approval decisions before `tools/call`, and
+   records audit/evidence for each decision.
 
 > Status: **MVP acceptance hardening evidence complete for the stdio core** —
 > tools-only mediation, filtered exposure, call-time enforcement, approvals,
 > output policy, snapshot diff, audit read privacy, target registration guards,
 > and stdio runtime hardening are implemented and tested. HTTP target socket-IP
-> pinning and full remote HTTP MCP E2E remain explicit follow-ups. See `handoff/`
-> for the design and `docs/adr/` for frozen decisions.
+> pinning and full remote HTTP MCP E2E remain explicit follow-ups.
+>
+> PlayMCP public registration is the P1 hosted-service target. It still requires
+> a new inbound Streamable HTTP server mode (`public-preflight`) and a strict
+> public tool allowlist. See
+> `docs/playmcp-public-hosted-preflight.md` and `docs/adr/ADR-018.md`.
 
-## Tools (current)
+## PlayMCP Hosted Preflight Direction
+
+For PlayMCP/Kakao, the intended listing is a hosted Remote MCP named
+`MCP Policy Gateway Preflight`.
+
+```text
+PlayMCP / Toolbox / Claude / ChatGPT
+  -> https://<public-host>/mcp
+      -> public-preflight tools
+          -> PlayMCP inventory assessment
+```
+
+This is not a local PC install flow for the end user. The operator deploys the
+public HTTPS MCP endpoint first, registers that endpoint in the PlayMCP developer
+console, tests it as a temporary registration, then requests review.
+
+Public PlayMCP tool surface:
+
+- `gateway_search_playmcp` — search PlayMCP inventory candidates before connecting a target MCP.
+- `gateway_preflight_mcp` — static pre-use decision aid for a PlayMCP MCP: decision, risk labels, representative risky tools, Gateway policy recommendation, and next action.
+- `gateway_explain_mcp_risk` — plain-language explanation of risk labels and decision rationale.
+
+Do not expose `gateway_call_tool`, `gateway_request_approval`,
+`gateway_list_exposed_tools`, target aliases, audit, rescan, diff, or registry
+tools in public PlayMCP mode. `gateway_health` should be an HTTP `/healthz`
+endpoint, not an LLM-visible MCP tool.
+
+Current P1 implementation gap: the repository currently starts the upstream
+server over stdio. PlayMCP registration needs an inbound Streamable HTTP `/mcp`
+endpoint, Streamable HTTP header/session/version handling, `/healthz`, hosted
+abuse/privacy controls, and the `public-preflight` allowlist.
+
+## Local Runtime Tools (current)
 
 Default client surface (`GATEWAY_TOOL_SURFACE_MODE=client`):
 - `gateway_health` — liveness/identity.
@@ -63,9 +108,32 @@ The MVP registry rejects raw stdio `env` values, and target processes inherit on
 `GATEWAY_STDIO_ENV_KEYS` (default: `PATH,SystemRoot,WINDIR,ComSpec`) plus explicit adapter-provided env.
 Use a later env-profile/secret-store integration for production target credentials.
 
-## Prompt Window Preflight
+## Hosted User Flow
 
-For a non-technical user, the intended starting point is the prompt window in
+For the PlayMCP/Kakao path, the user starts after the hosted MCP has already
+been registered by an operator:
+
+1. The user opens PlayMCP, Toolbox, Claude, ChatGPT, or another client connected
+   through PlayMCP.
+2. The user selects `MCP Policy Gateway Preflight`.
+3. The user asks:
+
+```text
+카카오맵 MCP 연결해도 돼?
+```
+
+4. The response returns a static decision aid, risk labels, representative risky
+   tools, recommended policy, and next action.
+5. The user decides whether to connect the target MCP, request approval, or send
+   the handoff to an operator.
+
+This hosted preflight flow does not install target MCPs, call target MCP tools,
+or provide runtime enforcement. Runtime enforcement begins only when a target is
+placed behind a managed Gateway deployment.
+
+## Local Prompt Window Preflight
+
+For local development, the starting point can still be the prompt window in
 Claude, Codex CLI, or a desktop MCP client. Register **this Gateway MCP** in the
 client first, then ask about a target MCP before adding that target directly.
 
@@ -179,7 +247,7 @@ Do not register the target MCP directly in the client if you want Gateway
 protection. A target should be registered behind the Gateway by an operator or
 managed config, then exposed through filtered aliases and call-time policy.
 
-### HTTP (Streamable HTTP) targets
+### Downstream HTTP (Streamable HTTP) targets
 
 `kind: "http"` targets are a guarded post-MVP surface behind an SSRF egress guard (ADR-017):
 `https` only by default, redirect destinations are re-validated before following, and every

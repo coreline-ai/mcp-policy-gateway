@@ -2,7 +2,16 @@
 
 ## 1. 제품 정의
 
-**MCP Runtime Policy Gateway**는 LLM client와 target MCP server 사이에 들어가는 inline MCP policy proxy다.
+**MCP Policy Gateway**는 두 제품 모드를 가진다.
+
+| Mode | 정의 |
+|---|---|
+| Hosted Preflight MCP | PlayMCP/Kakao에 public Remote MCP로 등록되어, 사용자가 다른 MCP를 연결하기 전에 inventory 기반 사전검증과 판단 근거를 제공한다. |
+| Runtime Policy Gateway | LLM client와 target MCP server 사이에 들어가는 inline MCP policy proxy다. |
+
+PlayMCP/Kakao 등록 목표에서는 Hosted Preflight MCP가 1차 제품이다. 이 모드는 target MCP를 자동 실행하지 않고, public users에게 risk labels, decision aid, recommended Gateway action, operator handoff를 제공한다.
+
+Runtime Policy Gateway는 managed/local enforcement 모드다.
 
 ```text
 MCP Client
@@ -10,7 +19,7 @@ MCP Client
       -> Target MCP Server
 ```
 
-Gateway는 target MCP의 tool 목록을 그대로 노출하지 않는다. 먼저 target `tools/list`를 pagination까지 완료 수집하고, 정책에 맞는 tool만 upstream client에 보여준다. client가 `tools/call`을 요청하면 target 호출 전에 policy engine이 `allow`, `block`, `approval_required`, `rewrite`, `limited_alias` 중 하나를 결정한다.
+Runtime Gateway는 target MCP의 tool 목록을 그대로 노출하지 않는다. 먼저 target `tools/list`를 pagination까지 완료 수집하고, 정책에 맞는 tool만 upstream client에 보여준다. client가 `tools/call`을 요청하면 target 호출 전에 policy engine이 `allow`, `block`, `approval_required`, `rewrite`, `limited_alias` 중 하나를 결정한다.
 
 ## 2. 왜 MCP 프로젝트인가
 
@@ -21,6 +30,7 @@ MCP다운 이유:
 | 기준 | 충족 방식 |
 |---|---|
 | MCP protocol 표면 | Gateway 자체가 upstream MCP server로 동작 |
+| PlayMCP public surface | Hosted Preflight MCP가 search/preflight/explain tools를 public Remote MCP로 제공 |
 | runtime 중재 | target MCP의 `tools/list`, `tools/call` 경로에 inline 위치 |
 | MCP-native tool surface | 최소 1개 이상 target alias를 filtered MCP tool로 upstream `tools/list`에 노출 |
 | 지속 상태 | target registry, capability snapshot, approval, audit 저장 |

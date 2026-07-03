@@ -33,6 +33,14 @@ function jsonBlockAfter(text: string, marker: string): string {
   return text.slice(contentStart, blockEnd).trim();
 }
 
+function removeSection(text: string, start: string, end: string): string {
+  const startIndex = text.indexOf(start);
+  if (startIndex < 0) return text;
+  const endIndex = text.indexOf(end, startIndex + start.length);
+  if (endIndex < 0) return text.slice(0, startIndex);
+  return text.slice(0, startIndex) + text.slice(endIndex);
+}
+
 describe("documentation consistency (Phase 11)", () => {
   it("keeps README expanded verification gate aligned with package verify:mvp", () => {
     const readme = read("README.md");
@@ -81,10 +89,27 @@ describe("documentation consistency (Phase 11)", () => {
   });
 
   it("keeps user-facing and handoff docs away from product-guarantee claims", () => {
+    const playMcpPublicDoc = removeSection(
+      read("docs/playmcp-public-hosted-preflight.md"),
+      "Do not claim:",
+      "Allowed wording:",
+    );
+    const projectDirection = removeSection(
+      read("PROJECT_DIRECTION.md"),
+      "## 10. Forbidden Claims",
+      "## 11. Authoritative References In This Repo",
+    );
+    const apiSurface = removeSection(
+      read("handoff/06-api-and-tool-surface.md"),
+      "PlayMCP 기반 사전검증은",
+      "### 2.1 `gateway_search_playmcp`",
+    );
     const docs = [
       read("README.md"),
+      projectDirection,
       read("docs/user-scenario-uat.md"),
-      read("handoff/06-api-and-tool-surface.md"),
+      playMcpPublicDoc,
+      apiSurface,
       read("handoff/08-testing-and-acceptance.md"),
     ].join("\n");
     const forbiddenProductClaims = [
@@ -95,6 +120,8 @@ describe("documentation consistency (Phase 11)", () => {
       "guarantees safety",
       "blocks all attacks",
       "detects every malicious MCP",
+      "Kakao or PlayMCP endorsement",
+      "all PlayMCP MCPs are safe to connect",
     ];
 
     for (const claim of forbiddenProductClaims) {
@@ -118,6 +145,70 @@ describe("documentation consistency (Phase 11)", () => {
     ].join("\n");
 
     for (const required of ["config:validate", "self-managed", "validated-local", "managed-enforced"]) {
+      expect(docs, required).toContain(required);
+    }
+  });
+
+  it("documents the PlayMCP hosted public preflight boundary", () => {
+    const docs = [
+      read("README.md"),
+      read("docs/playmcp-public-hosted-preflight.md"),
+      read("docs/adr/ADR-018.md"),
+      read("handoff/06-api-and-tool-surface.md"),
+      read("handoff/08-testing-and-acceptance.md"),
+    ].join("\n");
+
+    for (const required of [
+      "public-preflight",
+      "gateway_search_playmcp",
+      "gateway_preflight_mcp",
+      "gateway_explain_mcp_risk",
+      "gateway_call_tool",
+      "/healthz",
+      "Streamable HTTP",
+    ]) {
+      expect(docs, required).toContain(required);
+    }
+
+    expect(read("docs/adr/ADR-017.md")).toContain("downstream outbound HTTP targets");
+  });
+
+  it("documents the hosted Streamable HTTP contract required for PlayMCP registration", () => {
+    const docs = [
+      read("docs/playmcp-public-hosted-preflight.md"),
+      read("docs/adr/ADR-018.md"),
+      read("handoff/02-architecture.md"),
+      read("handoff/08-testing-and-acceptance.md"),
+    ].join("\n");
+
+    for (const required of [
+      "Accept: application/json, text/event-stream",
+      "202 Accepted",
+      "GET /mcp",
+      "DELETE /mcp",
+      "Mcp-Session-Id",
+      "MCP-Protocol-Version",
+      "400 Bad Request",
+    ]) {
+      expect(docs, required).toContain(required);
+    }
+  });
+
+  it("keeps hosted registration as the P1 product target", () => {
+    const docs = [
+      read("README.md"),
+      read("PROJECT_DIRECTION.md"),
+      read("handoff/01-product-requirements.md"),
+      read("handoff/02-architecture.md"),
+    ].join("\n");
+
+    for (const required of [
+      "Hosted Registration MVP",
+      "P1",
+      "public-preflight",
+      "PlayMCP registration",
+      "inbound Streamable HTTP",
+    ]) {
       expect(docs, required).toContain(required);
     }
   });

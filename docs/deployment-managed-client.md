@@ -2,6 +2,12 @@
 
 이 문서는 MCP Runtime Policy Gateway를 실제 사용자 환경에 배포할 때 target MCP 직접 등록 우회를 줄이기 위한 운영 체크리스트다.
 
+PlayMCP/Kakao public registration용 Hosted Preflight MCP는 이 문서의
+managed-enforced 모델과 다르다. Hosted Preflight는 사용자가 target MCP를
+연결하기 전에 판단 지원을 받는 public Remote MCP surface이며, target MCP
+직접 등록을 운영상 차단하는 runtime enforcement를 제공하지 않는다. Hosted
+registration 세부사항은 `docs/playmcp-public-hosted-preflight.md`를 따른다.
+
 핵심 원칙:
 
 - client config에는 Gateway만 배포한다.
@@ -14,6 +20,7 @@
 
 | Mode | 설명 | 가능한 주장 |
 |---|---|---|
+| `public-preflight` | PlayMCP/Kakao에 등록된 public Remote MCP가 inventory 기반 판단 지원만 제공한다. | target MCP 연결 전 risk/decision/handoff를 안내할 수 있다. runtime 차단 주장은 하지 않는다. |
 | `self-managed` | 사용자가 README 예시를 보고 직접 설정한다. | Gateway 사용 흐름을 안내할 수 있다. 사용자가 target을 직접 추가하면 우회 가능하다. |
 | `validated-local` | `config:validate`로 현재 client config가 Gateway-only인지 확인한다. | 검사 시점의 direct target 등록 drift를 감지할 수 있다. 설정 변경 자체를 막지는 않는다. |
 | `managed-enforced` | 조직이 MDM, GPO, read-only config, workspace policy 또는 동등한 통제로 client config를 배포하고 임의 수정을 제한한다. | target MCP가 Gateway 뒤에 있다는 조건에서 강한 Gateway-only enforcement claim을 할 수 있다. |

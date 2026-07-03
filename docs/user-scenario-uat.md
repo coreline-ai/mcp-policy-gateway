@@ -1,19 +1,85 @@
 # User Scenario UAT
 
-This checklist verifies the intended prompt-window workflow for `mcp-policy-gateway`.
+This checklist verifies the intended user workflow for `mcp-policy-gateway`.
 
 ## Scope
 
-The user starts in Claude, Codex CLI, or another MCP desktop client and asks whether a target MCP should be connected. The client should connect to this Gateway MCP first. Target MCP registration remains an operator/config action behind the Gateway.
+There are two user-facing paths:
+
+1. **Hosted PlayMCP path**: the operator has already deployed and registered
+   `MCP Policy Gateway Preflight` as a public Remote MCP. The user starts in
+   PlayMCP, Toolbox, Claude, ChatGPT, or another PlayMCP-connected client and
+   asks whether a target MCP should be connected.
+2. **Local prompt-window path**: a developer or operator registers this Gateway
+   MCP in Claude, Codex CLI, or another desktop MCP client for local validation.
+
+Target MCP registration remains an operator/config action behind the Gateway.
+Public hosted preflight does not auto-register or call the target MCP.
 
 ## Preconditions
+
+Hosted path:
+
+- Public HTTPS `/mcp` endpoint has been deployed.
+- PlayMCP temporary registration can load `tools/list`.
+- Public `tools/list` exposes only:
+  - `gateway_search_playmcp`
+  - `gateway_preflight_mcp`
+  - `gateway_explain_mcp_risk`
+- `/healthz` exists outside the MCP tool surface.
+
+Local path:
 
 - `npm install` completed.
 - `npm run typecheck` passes.
 - `PLAYMCP_INVENTORY_CSV` points to the PlayMCP inventory snapshot, or the default local snapshot exists.
 - The MCP client config contains only `mcp-policy-gateway` for this workflow.
 
+## Hosted PlayMCP Checks
+
+Ask:
+
+```text
+카카오맵 MCP 연결해도 돼?
+```
+
+Expected:
+
+- The answer identifies the matching MCP candidate.
+- The answer includes a decision, risk labels, representative risky tools,
+  Gateway policy recommendation, and next action.
+- The answer includes `operatorHandoffStructured` or equivalent handoff text.
+- The answer includes inventory freshness information when available.
+- The hosted server does not register, initialize, spawn, or call the target MCP.
+
+Ask:
+
+```text
+카카오톡 선물하기 MCP는 어떤 승인이 필요해?
+```
+
+Expected:
+
+- The answer does not recommend automatic target execution.
+- The handoff includes commerce-related review checks.
+- The Gateway recommendation includes approval or constrained alias handling.
+
+Ask:
+
+```text
+처음 보는 새 MCP를 연결해도 돼?
+```
+
+Expected:
+
+- Unknown MCP is handled as manual review or stronger.
+- The answer asks for source URL/package id, tools/list or tool names, auth
+  scopes, expected data use, and workflow reason.
+- No network fetch or target `tools/call` is required for this static intake step.
+
 ## Config Generation
+
+Local path only.
 
 Run:
 
@@ -33,6 +99,8 @@ Expected:
 - No target MCP server is registered in the generated config.
 
 ## Protocol Smoke
+
+Local stdio smoke:
 
 Run:
 
@@ -54,6 +122,8 @@ Expected:
 - MCP SDK client `tools/call` on `gateway_preflight_mcp` returns a structured result.
 
 ## Prompt Window Checks
+
+Local path checks:
 
 Ask:
 
@@ -116,6 +186,7 @@ The handoff is a review artifact, not an automatic target registration command.
 
 ## Completion Criteria
 
-- A non-technical user can generate config, register Gateway, ask a preflight question, and pass the handoff to an operator.
+- A hosted PlayMCP user can select the registered Preflight MCP, ask a preflight question, and understand the decision aid.
+- A local developer/operator can generate config, register Gateway, ask a preflight question, and pass the handoff to an operator.
 - The operator can use the handoff to decide whether to register the target behind the Gateway.
 - The user-facing flow does not add target auto-registration or remote tool calls.

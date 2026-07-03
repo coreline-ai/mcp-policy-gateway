@@ -10,6 +10,7 @@
 | Contract | target adapter MCP message handling, URL egress guard, registry validation |
 | Integration | Gateway upstream MCP + sample target MCP |
 | Static Assessment | PlayMCP inventory 187개 row 파싱, risk label, decision mapping |
+| Hosted PlayMCP Smoke | public Streamable HTTP `/mcp` registration path, public tool allowlist, no target calls |
 | Report Generation | PlayMCP HTML/JSON report 재생성, 금지 claim 방지 |
 | Client Onboarding | Claude/Codex/generic client config 생성, target direct registration 방지 |
 | Protocol Smoke | 실제 MCP SDK client가 Gateway stdio server의 `tools/list`와 `tools/call` 경로를 호출 |
@@ -125,6 +126,28 @@
 18. Verify audit events for every step and reproduce one decision from policyVersion.
 ```
 
+## 5.1 Hosted PlayMCP Registration Acceptance
+
+PlayMCP public registration readiness requires a separate hosted smoke. It is not
+covered by the current stdio smoke.
+
+| ID | Test | Expected |
+|---|---|---|
+| PM-H01 | inbound HTTP endpoint | `POST /mcp` accepts MCP initialize and JSON-RPC requests over Streamable HTTP. |
+| PM-H02 | POST header contract | POST requires/handles `Accept: application/json, text/event-stream` and returns JSON or SSE for requests. |
+| PM-H03 | notification response | accepted notifications/responses return `202 Accepted` with no body. |
+| PM-H04 | GET/DELETE behavior | GET opens SSE or returns 405; DELETE returns 405 while stateless. |
+| PM-H05 | protocol version | invalid or unsupported `MCP-Protocol-Version` returns 400. |
+| PM-H06 | public tool allowlist | `tools/list` returns exactly `gateway_search_playmcp`, `gateway_preflight_mcp`, `gateway_explain_mcp_risk`. |
+| PM-H07 | health outside tools | `GET /healthz` returns liveness and `gateway_health` is not listed as an MCP tool. |
+| PM-H08 | hidden runtime tools | `gateway_call_tool`, approval, exposed-tools, operator, audit, rescan, diff tools are absent and direct calls fail closed or unknown. |
+| PM-H09 | no target side effect | public preflight calls do not register, spawn, initialize, or call target MCP sessions. |
+| PM-H10 | origin/body/query limits | disallowed `Origin`, oversized bodies, and overlong user queries are rejected. |
+| PM-H11 | PlayMCP temporary registration | PlayMCP developer console can load server information from the public endpoint. |
+| PM-H12 | AI Chat smoke | PlayMCP AI Chat can call search, preflight, and explain tools with bounded responses. |
+| PM-H13 | claim boundary | responses and registration text avoid complete-safety, official-endorsement, and live-enforcement claims. |
+| PM-H14 | privacy metadata | hosted docs list collected fields, retention stance, deletion/security contact, and no raw credential storage. |
+
 ## 6. Prompt Window Acceptance Script
 
 일반 사용자 시나리오는 target MCP 사용 전 사전검증 흐름을 자동화해야 한다.
@@ -145,6 +168,12 @@
 
 MVP 완료 조건:
 
+- Hosted Registration MVP:
+  - public HTTPS `/mcp` Streamable HTTP endpoint 구현
+  - public `tools/list`가 search/preflight/explain만 노출
+  - `/healthz`가 MCP tool 밖에서 동작
+  - PlayMCP temporary registration과 AI Chat smoke 통과
+  - hosted privacy/retention/contact 문서화
 - 모든 must-pass core test 통과
 - PlayMCP 187개 inventory static assessment 통과
 - `npm run assessment:playmcp`가 HTML/JSON report를 생성
@@ -158,6 +187,8 @@ MVP 완료 조건:
 - raw secret 저장 테스트 통과
 - README와 user-facing docs에 제품 보장형 forbidden claim 없음
 - MCP client 등록 절차 문서화
+- PlayMCP hosted registration path 문서화
+- public-preflight mode의 inbound HTTP gap 또는 구현 상태 명시
 - client에는 Gateway만 등록하고 target은 Gateway 뒤에 둔다는 deployment rule 문서화
 - paginated `tools/list`와 `notifications/tools/list_changed` 테스트 통과
 - incomplete snapshot call fail-closed 테스트 통과

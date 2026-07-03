@@ -28,6 +28,9 @@
 | D22 | incomplete capability snapshot 상태에서는 target call을 default block한다. | 부분 관측 상태에서 hidden dangerous tool 호출이 열리는 것을 막는다. |
 | D23 | output redaction은 best-effort로만 주장한다. | 일반 DLP 보장을 하지 않고 결정론적 guardrail만 테스트한다. |
 | D24 | 새 레포 구조는 루트 `src/` 기반 단일 패키지로 시작한다. | MVP에서는 workspace/package 분리보다 단순한 bootstrap이 낫다. |
+| D25 | PlayMCP/Kakao public registration은 `public-preflight` hosted mode로 분리한다. | public listing은 판단 지원이어야 하며 runtime target proxy를 공개하면 scope와 claim이 커진다. |
+| D26 | `public-preflight`는 search/preflight/explain tools만 노출한다. | target call, approval, audit, rescan, registry, dynamic aliases는 public user surface가 아니다. |
+| D27 | public hosted health는 MCP tool이 아니라 HTTP `/healthz`로 제공한다. | liveness는 운영 endpoint이며 model-visible tool surface를 늘릴 이유가 없다. |
 
 ## 2. Defaults To Apply Before Implementation
 
@@ -49,6 +52,9 @@
 | Q12 | audit read UI/API를 MVP에 열 것인가? | 최소 metadata only, dashboard later |
 | Q13 | target executable 등록은 누가 하나? | privileged config/operator only |
 | Q14 | HTTP target SSRF 방어는 언제 넣나? | HTTP target later 전 egress allowlist와 private IP block 필수 |
+| Q15 | PlayMCP 등록용 inbound transport는 무엇인가? | Streamable HTTP `/mcp`, stdio는 local/dev path |
+| Q16 | public hosted mode에서 인증/사용자 식별을 주장하나? | PlayMCP listing 단계에서는 per-user/team enforcement claim 금지, privacy/abuse metadata only |
+| Q17 | public hosted mode가 target MCP를 호출하나? | no, inventory/static assessment only |
 
 ## 3. Decisions That Must Not Be Reopened Casually
 
@@ -63,6 +69,8 @@
 - `gateway_call_tool` router 하나만으로 공개 demo를 끝내지 않는다.
 - stdio MVP에서 per-user/team enforcement가 완성됐다고 주장하지 않는다.
 - target registry를 임의 사용자 입력으로 열지 않는다.
+- PlayMCP public listing에서 runtime target call surface를 열지 않는다.
+- public hosted mode가 Kakao/PlayMCP 보안 승인을 받은 것처럼 말하지 않는다.
 
 ## 4. First Technical ADR Candidates
 
@@ -85,3 +93,4 @@
 | ADR-013 | Use RFC 8785 Canonical Effective Arguments For Approval Hash |
 | ADR-014 | Persist Policy Versions For Audit Reproduction |
 | ADR-015 | Fail Closed For Unsupported Reverse Capabilities |
+| ADR-018 | Hosted Streamable HTTP Public Preflight Mode |
