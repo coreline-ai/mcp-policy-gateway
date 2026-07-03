@@ -1,0 +1,38 @@
+{
+  "name": "mcp-runtime-policy-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Inline MCP policy proxy: controls target MCP tool exposure and invocation by policy, and records audit/evidence for every decision.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "tsx src/index.ts",
+    "migrate": "tsx src/storage/migrate.ts",
+    "approve": "tsx src/approval/approve-cli.ts",
+    "review": "tsx src/catalog/review-cli.ts",
+    "config:client": "tsx scripts/print-client-config.ts",
+    "config:validate": "tsx scripts/validate-client-config.ts",
+    "assessment:playmcp": "tsx scripts/generate-playmcp-assessment.ts",
+    "smoke:preuse": "tsx scripts/smoke-preuse-mcp.ts",
+    "smoke:mcp-client-preflight": "tsx scripts/smoke-mcp-client-preflight.ts",
+    "verify:mvp": "npm run typecheck && npm test && npm run smoke:preuse && npm run smoke:mcp-client-preflight && npm run assessment:playmcp && npm run demo:mvp && npm audit --omit=dev",
+    "start:target:safe": "tsx sample-targets/safe-notes-mcp/index.ts",
+    "start:target:risky": "tsx sample-targets/risky-actions-mcp/index.ts",
+    "demo:mvp": "tsx scripts/demo-mvp.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^11.8.1",
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

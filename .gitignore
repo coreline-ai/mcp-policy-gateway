@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.sqlite
+*.sqlite-*
+.data/
+reports/*
+!reports/.gitkeep
+v1-spike/

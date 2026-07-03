@@ -1,0 +1,12 @@
+version: 1
+default: deny
+
+# Phase Entry 1 baseline: deny everything. Allow/alias/approval rules arrive in
+# later phases. Default-deny is the real protection surface (ADR-003).
+targets: {}
+
+rules:
+  - id: deny-unknown
+    match:
+      any: true
+    effect: block

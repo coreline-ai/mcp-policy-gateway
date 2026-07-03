@@ -1,0 +1,35 @@
+version: 1
+default: deny
+
+classifiers:
+  readonlyName: "^(actions\\.)?(list|get|query|search|status)"
+
+rules:
+  # read-only tools are exposed directly
+  - id: allow-readonly
+    match:
+      target: "Risky Actions"
+      toolNameRegex: "^(actions\\.)?(list|get|query|search|status)"
+    effect: allow
+
+  # apply_profile is exposed only as a preview alias with dryRun forced true
+  - id: preview-profile
+    match:
+      target: "Risky Actions"
+      tool: "actions.apply_profile"
+    effect: limited_alias
+    exposeAs:
+      name: "risky_actions__preview_profile"
+      injectArguments:
+        dryRun: true
+      hideArguments:
+        - dryRun
+
+  # direct mutation tools require approval (Phase 4); blocked until then
+  - id: approve-mutations
+    match:
+      target: "Risky Actions"
+      toolNameRegex: "(apply|bypass|rollback)"
+    effect: approval_required
+
+  # actions.delete_all has no rule -> default deny -> hidden + router-blocked
